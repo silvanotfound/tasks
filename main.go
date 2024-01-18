@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "silvanotfound/tasks/router"
 
 func main() {
-	fmt.Println("Tasks runing...")
+	router.Initialize()
 }
