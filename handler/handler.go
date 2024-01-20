@@ -1,37 +1,96 @@
 package handler
 
 import (
-	"net/http"
+	"silvanotfound/tasks/config"
+	"silvanotfound/tasks/schemas"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
+var (
+	logger *config.Logger
+	db     *gorm.DB
+)
+
+func InitializeHandler() {
+	logger = config.GetLogger("Handler")
+	db = config.GetSqlite()
+}
+
 func CreateTaskHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Create task",
-	})
+	request := CreateTaskRequest{}
+	ctx.BindJSON(&request)
+	if err := request.validade(); err != nil {
+		sendResponseError(ctx, err.Error())
+		return
+	}
+	task := schemas.Task{
+		Description: request.Description,
+		IsDone:      *request.IsDone,
+	}
+	db.Create(&task)
+	sendResponseSuccess(ctx, "Atividade criada com sucesso", task)
+}
+
+type UpdateTask struct {
+	Description string
+	IsDone      *bool
 }
 
 func UpdateTaskHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Update task",
-	})
+	id := ctx.Query("id")
+	if id == "" {
+		sendResponseError(ctx, "Aprameter Id is querired")
+	}
+	var taskModel schemas.Task
+	if err := db.First(&taskModel, id).Error; err != nil {
+		sendResponseError(ctx, "task id not found")
+		return
+	}
+	request := CreateTaskRequest{}
+	ctx.BindJSON(&request)
+	if err := request.validade(); err != nil {
+		sendResponseError(ctx, err.Error())
+		return
+	}
+	task := UpdateTask{
+		Description: request.Description,
+		IsDone:      request.IsDone,
+	}
+	db.Model(taskModel).Updates(task)
+	sendResponseSuccess(ctx, "Atividade atualizada com sucesso", task)
 }
 
 func DeleteTaskHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Delete success",
-	})
+	id := ctx.Query("id")
+	if id == "" {
+		sendResponseError(ctx, "Aprameter Id is querired")
+	}
+	task := schemas.Task{}
+	if err := db.First(&task, id).Error; err != nil {
+		sendResponseError(ctx, "task id not found")
+		return
+	}
+	db.Delete(&task)
+	sendResponseSuccess(ctx, "Atividade deletada com sucesso", task)
 }
 
 func ShowTaskHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Show success",
-	})
+	id := ctx.Query("id")
+	if id == "" {
+		sendResponseError(ctx, "Aprameter Id is querired")
+	}
+	task := schemas.Task{}
+	if err := db.First(&task, id).Error; err != nil {
+		sendResponseError(ctx, "task id not found")
+		return
+	}
+	sendResponseSuccess(ctx, "", task)
 }
 
 func ShowAllTasksHandler(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{
-		"message": "Show all tasks success",
-	})
+	tasks := []schemas.Task{}
+	db.Find(&tasks)
+	sendResponseSuccess(ctx, "", tasks)
 }
